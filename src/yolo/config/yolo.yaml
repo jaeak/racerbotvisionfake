@@ -1,0 +1,9 @@
+yolo_node:
+  ros__parameters:
+    # Full path to the exported model, e.g. /home/<user>/models/yolov8n.onnx
+    model_path: ''
+    image_topic: /image_raw
+    confidence: 0.35         # ignore boxes YOLO is less sure about than this
+    iou: 0.45                # overlap above this = same object (NMS)
+    input_size: 640          # must match imgsz used when exporting (try 320 if too slow)
+    publish_debug_image: true

@@ -3,11 +3,18 @@
 <package format="3">
   <name>yolo</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ROS 2 node that runs YOLO (ONNX, via OpenCV) on camera images and publishes detections.</description>
   <maintainer email="nathan@nathanjacobson.ca">rosdev</maintainer>
   <license>TODO: License declaration</license>
 
-  <depend>ackermann_msgs</depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
