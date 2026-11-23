@@ -24,9 +24,13 @@ def make_detector():
     aruco = cv2.aruco
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_APRILTAG_36h11)
     if hasattr(aruco, 'ArucoDetector'):          # OpenCV 4.7+
-        detector = aruco.ArucoDetector(dictionary, aruco.DetectorParameters())
-        return detector.detectMarkers
-    params = aruco.DetectorParameters_create()   # OpenCV 4.6 (Ubuntu 24.04)
+        params = aruco.DetectorParameters()
+    else:                                        # OpenCV 4.6 (Ubuntu 24.04)
+        params = aruco.DetectorParameters_create()
+    # Sub-pixel corners: much steadier angles, which matters for extrinsics.
+    params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+    if hasattr(aruco, 'ArucoDetector'):
+        return aruco.ArucoDetector(dictionary, params).detectMarkers
     return lambda gray: aruco.detectMarkers(gray, dictionary, parameters=params)
 
 
