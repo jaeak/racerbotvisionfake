@@ -104,3 +104,27 @@ Starts the camera TF, `webcam_publisher.py`, and `opponent_perception` with
 `ros2 topic echo --once --full-length /perception/opponents`.
 Bench test 2026-11-23: status ok, tag at 0.725 m read `position_m [0.727, 0.001]`,
 yaw 0.086 rad, speed ~0, reprojection 0.89 px.
+
+## AprilTag tracking accuracy (fill in)
+
+Tag 2 upright, facing the car. Tape measured from the floor point under the
+rear axle centre (forward along the centre line, left = +, right = -).
+`position_m` from `/perception/opponents`.
+
+| # | Tape forward (m) | Tape sideways (m) | position_m forward | position_m left | Error forward (cm) | Error sideways (cm) |
+|---|---|---|---|---|---|---|
+| 1 | 0.725 | 0.000 | 0.731 | +0.011 | +0.6 | +1.1 |
+| 2 | 0.860 | 0.000 | 0.865 | +0.029 | +0.5 | +2.9 |
+| 3 | 0.660 | +0.085 | 0.666 | +0.114 | +0.6 | +2.9 |
+| 4 | 0.660 | -0.105 | 0.690 | -0.083 | +3.0 | +2.2 |
+
+Result (2026-11-23): every reading within 3 cm of the tape. Forward error is
+about +0.5 cm except row 4 (+3 cm). Sideways readings sit consistently about
+2 cm to the left of the tape, a small fixed offset (likely the camera's
+sideways position or yaw from the extrinsic calibration).
+Row 1 is the calibration spot, so it isn't an independent check.
+Tested only from 0.66 to 0.86 m (limited floor space); longer range
+(1-3 m, typical racing distance) still to be tested.
+Sign check: `position_m` uses left = +. The sheet column was labelled
+"right = +" but its signs match the readings, so confirm which side the tag
+was physically on for row 3 (left of the car's centre line expected).
