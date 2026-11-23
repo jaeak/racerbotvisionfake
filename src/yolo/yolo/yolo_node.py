@@ -19,7 +19,8 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-from .detector import color_mask, draw_detections, YoloDetector
+from .backends import make_detector
+from .detector import color_mask, draw_detections
 
 
 class YoloNode(Node):
@@ -35,17 +36,24 @@ class YoloNode(Node):
         self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('classes', ['car'])        # ['all'] = every class
         self.declare_parameter('barrier_color', 'orange')  # 'orange' or 'yellow'
+        self.declare_parameter('backend', 'auto')          # 'auto', 'tensorrt' or 'opencv'
+        self.declare_parameter('engine_path', '')          # '' = next to model_path
+        self.declare_parameter('auto_build_engine', True)  # build .engine from .onnx if missing
 
         model_path = self.get_parameter('model_path').value
-        if not model_path:
-            raise RuntimeError('Set the model_path parameter to your yolov8n.onnx file')
+        engine_path = self.get_parameter('engine_path').value
+        if not model_path and not engine_path:
+            raise RuntimeError('Set model_path to your yolov8n.onnx file')
 
-        self.detector = YoloDetector(
-            model_path,
+        # TensorRT on the GPU if it works, otherwise OpenCV on the CPU (see backends.py).
+        self.detector, self.backend = make_detector(
+            self.get_parameter('backend').value, model_path, engine_path,
             input_size=self.get_parameter('input_size').value,
             confidence=self.get_parameter('confidence').value,
             iou=self.get_parameter('iou').value,
             classes=self.get_parameter('classes').value,
+            auto_build=self.get_parameter('auto_build_engine').value,
+            info=self.get_logger().info, warn=self.get_logger().warn,
         )
         self.barrier_color = self.get_parameter('barrier_color').value
         color_mask(np.zeros((1, 1, 3), dtype=np.uint8), self.barrier_color)  # fail early if wrong
@@ -66,7 +74,7 @@ class YoloNode(Node):
         self.frames = 0
         self.last_log = time.monotonic()
         self.get_logger().info(
-            f'YOLO node ready, listening on {image_topic}, classes '
+            f'YOLO node ready ({self.backend}), listening on {image_topic}, classes '
             f'{list(self.get_parameter("classes").value)}, barrier colour {self.barrier_color}')
 
     def on_image(self, msg):
@@ -90,6 +98,7 @@ class YoloNode(Node):
             'frame_id': msg.header.frame_id,
             'image_size': [msg.width, msg.height],
             'inference_ms': round(infer_ms, 1),
+            'backend': self.backend,
             'barrier_color': self.barrier_color,
             'barrier_pixels': int((mask > 0).sum()),
             'detections': detections,
@@ -108,7 +117,7 @@ class YoloNode(Node):
         if now - self.last_log >= 5.0:
             fps = self.frames / (now - self.last_log)
             self.get_logger().info(
-                f'{fps:.1f} FPS, last inference {infer_ms:.0f} ms, '
+                f'{fps:.1f} FPS ({self.backend}), last inference {infer_ms:.0f} ms, '
                 f'{len(detections)} detections')
             self.frames, self.last_log = 0, now
 

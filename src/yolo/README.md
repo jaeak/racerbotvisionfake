@@ -31,13 +31,39 @@ Example detections message:
                  "center_xy_pixels": [190.0, 250.0]}]}
 ```
 
-## Why ONNX + OpenCV
+## GPU (TensorRT) and CPU (OpenCV)
 
 The car's Jetson has no PyTorch, so Ultralytics can't run there. The model is
-exported once to `.onnx` on a laptop and run with OpenCV's DNN module.
-It runs on the CPU, because the car's OpenCV has no CUDA (see the car workspace's
-`docs/gpu-acceleration.md`). If it's too slow: first try `imgsz=320` / `input_size: 320`,
-then a TensorRT engine on the GPU (TensorRT is already installed on the car).
+exported once to `.onnx` on a laptop, then run on the car one of two ways:
+
+| Backend | Runs on | Needs |
+|---|---|---|
+| **TensorRT** (default) | GPU | a `.engine` file, built from the `.onnx` **on the car** |
+| OpenCV | CPU (slower) | just the `.onnx` |
+
+`backend: auto` (in `config/yolo.yaml`) tries TensorRT first. If anything is
+missing it prints why and falls back to OpenCV, so the node still runs. The
+node's startup line and FPS lines say which one it's using.
+
+The engine is built automatically the first time (a few minutes, once) with
+TensorRT's `trtexec` in FP16, and saved next to the `.onnx`
+(`~/models/yolov8n.engine`). An engine only works on the GPU and TensorRT
+version it was built on: never copy it between machines or commit it.
+After a JetPack/TensorRT update, delete it and it rebuilds.
+
+GPU memory is handled through CUDA's own runtime library (libcudart), so no
+PyCUDA/CuPy is needed; only TensorRT's Python bindings (`import tensorrt`).
+
+**Check everything (and build the engine) before using the node:**
+
+```bash
+ros2 run yolo yolo_check --model ~/models/yolov8n.onnx
+```
+
+It checks TensorRT, CUDA and `trtexec`, builds the engine, confirms TensorRT
+gives the same output as OpenCV, and prints the speed of both. If a step
+fails it says what to fix. The most likely one is `import tensorrt` failing:
+then TensorRT's Python package needs installing (ask whoever manages the car).
 
 ## Run it (step by step)
 
@@ -75,7 +101,12 @@ ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0
 ```
 
 If it says `Package 'usb_cam' not found`: `sudo apt install ros-jazzy-usb-cam`
-(ask whoever manages the car first).
+(ask whoever manages the car first). Or, with nothing to install, use the
+simple publisher in this repo (car 1 webcam, with its calibration):
+
+```bash
+python3 ~/racerbot-vision/src/webcam_publisher.py --info ~/racerbot-vision/src/camera_info_rb1.yaml
+```
 
 Car 2 (RealSense), publishes `/camera/camera/color/image_raw`:
 
@@ -121,8 +152,9 @@ To see the boxes, on the car's screen (remote desktop) run
 `ros2 run rqt_image_view rqt_image_view` and pick `/perception/yolo/debug_image`.
 (Lichtblick/Foxglove on the dashboard hides raw images, so it won't show there.)
 
-**If it's too slow:** set `input_size: 320` in `config/yolo.yaml`, re-export with
-`imgsz=320`, rebuild. Next step after that is a TensorRT engine on the GPU.
+**If it's too slow:** first make sure it says `tensorrt`, not `opencv`, in the
+FPS line. If it's already on TensorRT, set `input_size: 320`, re-export the
+`.onnx` with `imgsz=320`, delete the old `.engine` and rebuild.
 
 **Troubleshooting**
 
@@ -144,6 +176,9 @@ To see the boxes, on the car's screen (remote desktop) run
 | `iou` | `0.45` | Overlap threshold for removing duplicate boxes (NMS) |
 | `input_size` | `640` | Must match `imgsz` used when exporting |
 | `publish_debug_image` | `true` | Publish the image with boxes drawn |
+| `backend` | `auto` | `auto` (TensorRT, else OpenCV), `tensorrt` or `opencv` |
+| `engine_path` | `''` | TensorRT engine; empty = `model_path` with `.engine` |
+| `auto_build_engine` | `true` | Build the engine from the `.onnx` if it doesn't exist |
 | `classes` | `['car']` | COCO class names to keep, e.g. `['car', 'truck']`. `['all']` keeps everything |
 | `barrier_color` | `orange` | Barrier colour filter: `orange` or `yellow` (one at a time) |
 

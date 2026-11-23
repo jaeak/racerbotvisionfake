@@ -29,6 +29,7 @@ setup(
     entry_points={
         'console_scripts': [
             'yolo_node = yolo.yolo_node:main',
+            'yolo_check = yolo.check_tensorrt:main',
         ],
     },
 )

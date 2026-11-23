@@ -1,0 +1,15 @@
+# Python cache (made automatically when code runs)
+__pycache__/
+*.pyc
+
+# colcon build output
+build/
+install/
+log/
+
+# TensorRT engines only work on the machine/TensorRT version that built them
+*.engine
+*.engine.partial
+
+# Test leftovers
+src/yolo/tmp*/

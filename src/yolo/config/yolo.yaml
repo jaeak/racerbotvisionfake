@@ -10,3 +10,8 @@ yolo_node:
     publish_debug_image: true
     classes: ['car']         # COCO class names to keep; ['all'] = everything
     barrier_color: orange    # barrier colour filter: orange or yellow
+    # How YOLO runs. auto = TensorRT on the GPU, falls back to OpenCV (CPU) if
+    # TensorRT isn't available (the reason is printed). tensorrt / opencv = force one.
+    backend: auto
+    engine_path: ''          # '' = model_path with .engine (e.g. ~/models/yolov8n.engine)
+    auto_build_engine: true  # build the engine from the .onnx on first run (minutes, once)

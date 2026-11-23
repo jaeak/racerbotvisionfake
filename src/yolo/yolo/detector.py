@@ -62,6 +62,13 @@ def class_ids_for(class_names, names=COCO_NAMES):
     return {names.index(n) for n in class_names}
 
 
+def preprocess(frame_bgr, input_size=640):
+    """Picture -> network input: resize to input_size square, pixels 0-1,
+    BGR -> RGB, shape (1, 3, H, W) float32. Same for OpenCV and TensorRT."""
+    return cv2.dnn.blobFromImage(frame_bgr, 1 / 255.0, (input_size, input_size),
+                                 swapRB=True, crop=False)
+
+
 def parse_yolo_output(output, frame_w, frame_h, input_size=640,
                       confidence=0.35, iou=0.45, names=COCO_NAMES, keep_class_ids=None):
     """Turn the raw YOLOv8 output into a list of detection dicts.
@@ -113,8 +120,8 @@ class YoloDetector:
 
     def __init__(self, model_path, input_size=640, confidence=0.35, iou=0.45,
                  classes=('car',)):
-        # Runs on the CPU. The car's OpenCV has no CUDA support
-        # (docs/gpu-acceleration.md), so the GPU path will be TensorRT later.
+        # Runs on the CPU (the car's OpenCV has no CUDA support). This is the
+        # fallback; the GPU path is TensorRTDetector in trt_backend.py.
         self.net = cv2.dnn.readNetFromONNX(model_path)
         self.input_size = input_size
         self.confidence = confidence
@@ -123,11 +130,7 @@ class YoloDetector:
 
     def detect(self, frame_bgr):
         h, w = frame_bgr.shape[:2]
-        # Resize to 640x640, scale pixels to 0-1, and swap BGR -> RGB.
-        blob = cv2.dnn.blobFromImage(frame_bgr, 1 / 255.0,
-                                     (self.input_size, self.input_size),
-                                     swapRB=True, crop=False)
-        self.net.setInput(blob)
+        self.net.setInput(preprocess(frame_bgr, self.input_size))
         output = self.net.forward()
         return parse_yolo_output(output, w, h, self.input_size,
                                  self.confidence, self.iou,
