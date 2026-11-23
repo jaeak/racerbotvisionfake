@@ -58,7 +58,7 @@ def class_ids_for(class_names, names=COCO_NAMES):
         return None
     unknown = [n for n in class_names if n not in names]
     if unknown:
-        raise ValueError(f'unknown class names {unknown}; see COCO_NAMES in detector.py')
+        raise ValueError(f'unknown class names {unknown}; this model has: {list(names)}')
     return {names.index(n) for n in class_names}
 
 
@@ -119,21 +119,31 @@ class YoloDetector:
     """Loads a YOLOv8 .onnx model once, then finds objects in frames."""
 
     def __init__(self, model_path, input_size=640, confidence=0.35, iou=0.45,
-                 classes=('car',)):
+                 classes=('car',), names=None):
         # Runs on the CPU (the car's OpenCV has no CUDA support). This is the
         # fallback; the GPU path is TensorRTDetector in trt_backend.py.
         self.net = cv2.dnn.readNetFromONNX(model_path)
         self.input_size = input_size
+        # Run once now, so an OpenCV that can't handle this model fails here with
+        # a clear message (the car's OpenCV 4.6 can't run YOLOv8), not on frame 1.
+        try:
+            self.net.setInput(np.zeros((1, 3, input_size, input_size), dtype=np.float32))
+            self.net.forward()
+        except cv2.error as e:
+            raise RuntimeError(
+                f'OpenCV {cv2.__version__} cannot run {model_path} '
+                '(YOLOv8 needs OpenCV 4.7+). Use the TensorRT backend.') from e
         self.confidence = confidence
         self.iou = iou
-        self.keep_class_ids = class_ids_for(list(classes))
+        self.names = list(names) if names else COCO_NAMES   # your own model: its names
+        self.keep_class_ids = class_ids_for(list(classes), self.names)
 
     def detect(self, frame_bgr):
         h, w = frame_bgr.shape[:2]
         self.net.setInput(preprocess(frame_bgr, self.input_size))
         output = self.net.forward()
         return parse_yolo_output(output, w, h, self.input_size,
-                                 self.confidence, self.iou,
+                                 self.confidence, self.iou, names=self.names,
                                  keep_class_ids=self.keep_class_ids)
 
 

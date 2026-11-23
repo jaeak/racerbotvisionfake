@@ -106,7 +106,9 @@ def main():
         cv_det.net.setInput(blob)
         cv_out = cv_det.net.forward()
     except Exception as e:
-        print(f'  SKIP OpenCV could not run this model ({type(e).__name__}: {e}).')
+        cv_det = None
+        reason = str(e).strip().splitlines()[-1] if str(e).strip() else type(e).__name__
+        print(f'  SKIP OpenCV could not run this model ({reason})')
         print('       Not a problem for TensorRT; it only means no CPU fallback.')
     if cv_det is not None:
         if cv_out.shape != trt_out.shape:

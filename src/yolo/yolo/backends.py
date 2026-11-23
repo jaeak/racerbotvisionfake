@@ -58,11 +58,12 @@ def build_engine(onnx_path, engine_path, fp16=True, trtexec=None, log=print):
 
 def make_detector(backend, model_path, engine_path='', input_size=640, confidence=0.35,
                   iou=0.45, classes=('car',), auto_build=True, fp16=True,
-                  info=print, warn=print):
+                  names=None, info=print, warn=print):
     """Return (detector, name_of_backend_used)."""
     if backend not in BACKENDS:
         raise ValueError(f'backend must be one of {BACKENDS}, got {backend!r}')
-    common = dict(input_size=input_size, confidence=confidence, iou=iou, classes=classes)
+    common = dict(input_size=input_size, confidence=confidence, iou=iou, classes=classes,
+                  names=names)
 
     if backend in ('auto', 'tensorrt'):
         try:

@@ -39,6 +39,9 @@ class YoloNode(Node):
         self.declare_parameter('backend', 'auto')          # 'auto', 'tensorrt' or 'opencv'
         self.declare_parameter('engine_path', '')          # '' = next to model_path
         self.declare_parameter('auto_build_engine', True)  # build .engine from .onnx if missing
+        # Class names of YOUR model, in training order, comma separated, e.g.
+        # 'racerbot_car,barrier'. Empty = the stock COCO model's 80 names.
+        self.declare_parameter('class_names', '')
 
         model_path = self.get_parameter('model_path').value
         engine_path = self.get_parameter('engine_path').value
@@ -53,6 +56,8 @@ class YoloNode(Node):
             iou=self.get_parameter('iou').value,
             classes=self.get_parameter('classes').value,
             auto_build=self.get_parameter('auto_build_engine').value,
+            names=[n.strip() for n in self.get_parameter('class_names').value.split(',')
+                   if n.strip()] or None,
             info=self.get_logger().info, warn=self.get_logger().warn,
         )
         self.barrier_color = self.get_parameter('barrier_color').value

@@ -15,7 +15,7 @@ import ctypes.util
 import numpy as np
 import tensorrt as trt
 
-from .detector import class_ids_for, parse_yolo_output, preprocess
+from .detector import class_ids_for, COCO_NAMES, parse_yolo_output, preprocess
 
 _HOST_TO_DEVICE = 1    # cudaMemcpyHostToDevice
 _DEVICE_TO_HOST = 2    # cudaMemcpyDeviceToHost
@@ -94,11 +94,12 @@ class TensorRTDetector:
     """Loads a TensorRT .engine once, then finds objects in frames on the GPU."""
 
     def __init__(self, engine_path, input_size=640, confidence=0.35, iou=0.45,
-                 classes=('car',)):
+                 classes=('car',), names=None):
         self.cuda = CudaRuntime()
         self.confidence = confidence
         self.iou = iou
-        self.keep_class_ids = class_ids_for(list(classes))
+        self.names = list(names) if names else COCO_NAMES
+        self.keep_class_ids = class_ids_for(list(classes), self.names)
         self._buffers = []
         self.stream = None
 
@@ -150,7 +151,7 @@ class TensorRTDetector:
         h, w = frame_bgr.shape[:2]
         output = self.infer_raw(preprocess(frame_bgr, self.input_size))
         return parse_yolo_output(output, w, h, self.input_size, self.confidence, self.iou,
-                                 keep_class_ids=self.keep_class_ids)
+                                 names=self.names, keep_class_ids=self.keep_class_ids)
 
     def close(self):
         for ptr in self._buffers:

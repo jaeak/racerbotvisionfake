@@ -108,3 +108,11 @@ def test_bad_colour_name_is_an_error():
     except ValueError:
         return
     raise AssertionError('expected ValueError')
+
+
+def test_custom_model_names():
+    names = ['racerbot_car', 'barrier']
+    out = fake_output([(100, 100, 50, 50, 0, 0.9), (500, 500, 50, 50, 1, 0.8)], num_classes=2)
+    dets = parse_yolo_output(out, 640, 640, names=names,
+                             keep_class_ids=class_ids_for(['barrier'], names))
+    assert [d['class_name'] for d in dets] == ['barrier']
