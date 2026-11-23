@@ -56,7 +56,7 @@ scp yolov8n.onnx <user>@<car-ip>:~/models/
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-cd ~/racerbot-vision            # wherever the repo is cloned
+cd ~/vision-test            # wherever the repo is cloned
 colcon build --packages-select yolo
 ```
 
