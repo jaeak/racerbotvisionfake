@@ -15,6 +15,13 @@ It averages many frames, then prints the camera's position/angles on the car
 and a ready-to-use static TF command (base_link -> camera_optical_frame).
 Press q to stop early (uses the frames collected so far).
 
+Tag orientation: the team's printed tags (official AprilTag images, label
+underneath) are rotated 180 degrees compared to how OpenCV draws the same ID.
+OpenCV still reads the right ID, but would think the tag is upside down
+(roll ~180). This script corrects for that by default. If you print tags with
+OpenCV's generateImageMarker instead, add --opencv-tags.
+If the result says roll is about +/-180, flip that setting.
+
 Needs apriltag_test.py in the same folder.
 """
 
@@ -120,6 +127,8 @@ def main():
     p.add_argument('--tag-z', type=float, required=True, help='tag centre, m above rear axle centre')
     p.add_argument('--id', type=int, help='only use this tag id')
     p.add_argument('--frames', type=int, default=60, help='frames to average')
+    p.add_argument('--opencv-tags', action='store_true',
+                   help='tag was printed by OpenCV (no 180 degree correction)')
     args = p.parse_args()
 
     K, dist, (width, height) = load_calibration(args.params)
@@ -143,7 +152,10 @@ def main():
                              f'calibration is {width}x{height}')
         tags = [t for t in find_tags(frame, detect) if args.id is None or t[0] == args.id]
         if len(tags) == 1:
-            pose = tag_in_camera(tags[0][1], args.size, K, dist)
+            corners = tags[0][1].reshape(4, 2)
+            if not args.opencv_tags:
+                corners = corners[[2, 3, 0, 1]]   # official print = OpenCV turned 180
+            pose = tag_in_camera(corners, args.size, K, dist)
             if pose is not None:
                 distances.append(float(np.linalg.norm(pose[1])))
                 R, t = camera_in_base(*pose, tag_xyz)
