@@ -16,7 +16,7 @@ import sys
 # Checkerboard configuration (inner corners: count rows/cols of internal vertices)
 CHECKERBOARD_DIMS = (9, 6)   # e.g., a 10x7 square board has 9x6 inner corners
 SQUARE_SIZE_METERS = 0.025   # Length of each checkerboard square side in meters (25mm)
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 TARGET_WIDTH = 1280
 TARGET_HEIGHT = 720
 OUTPUT_YAML = "camera_params.yaml"
