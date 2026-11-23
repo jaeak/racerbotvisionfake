@@ -2,7 +2,8 @@
 
 import numpy as np
 
-from yolo.detector import draw_detections, orange_mask, parse_yolo_output
+from yolo.detector import (class_ids_for, color_mask, draw_detections, orange_mask,
+                           parse_yolo_output)
 
 
 def fake_output(guesses, num_classes=80, num_boxes=8400):
@@ -63,3 +64,47 @@ def test_draw_does_not_change_input():
     out = draw_detections(frame, [det])
     assert not frame.any()
     assert out.any()
+
+
+def test_class_filter_keeps_only_cars():
+    out = fake_output([(100, 100, 50, 50, 2, 0.9), (500, 500, 50, 50, 0, 0.9)])
+    dets = parse_yolo_output(out, 640, 640, keep_class_ids={2})
+    assert [d['class_name'] for d in dets] == ['car']
+
+
+def test_class_names_to_ids():
+    assert class_ids_for(['car']) == {2}
+    assert class_ids_for(['all']) is None
+    assert class_ids_for([]) is None
+
+
+def test_unknown_class_name_is_an_error():
+    try:
+        class_ids_for(['racecar'])
+    except ValueError:
+        return
+    raise AssertionError('expected ValueError')
+
+
+def test_yellow_and_orange_are_separate():
+    frame = np.zeros((10, 20, 3), dtype=np.uint8)
+    frame[:, :10] = (0, 128, 255)   # orange in BGR
+    frame[:, 10:] = (0, 255, 255)   # yellow in BGR
+    orange = color_mask(frame, 'orange')
+    yellow = color_mask(frame, 'yellow')
+    assert orange[:, :10].all() and not orange[:, 10:].any()
+    assert yellow[:, 10:].all() and not yellow[:, :10].any()
+
+
+def test_skin_tone_is_not_a_barrier():
+    frame = np.full((10, 10, 3), (120, 160, 220), dtype=np.uint8)   # light skin, BGR
+    assert not color_mask(frame, 'orange').any()
+    assert not color_mask(frame, 'yellow').any()
+
+
+def test_bad_colour_name_is_an_error():
+    try:
+        color_mask(np.zeros((2, 2, 3), dtype=np.uint8), 'purple')
+    except ValueError:
+        return
+    raise AssertionError('expected ValueError')

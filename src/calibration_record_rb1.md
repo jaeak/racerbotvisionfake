@@ -89,3 +89,18 @@ ros2 run usb_cam usb_cam_node_exe --ros-args \
   -p camera_name:=webcam \
   -p camera_info_url:=file://$HOME/racerbot-vision/src/camera_info_rb1.yaml
 ```
+
+## Running AprilTag tracking (one command)
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/racerbot-ws/install/setup.bash
+ros2 launch ~/racerbot-vision/src/apriltag_rb1_launch.py            # parked car (bench test)
+ros2 launch ~/racerbot-vision/src/apriltag_rb1_launch.py bench:=false  # car bringup running
+```
+
+Starts the camera TF, `webcam_publisher.py`, and `opponent_perception` with
+`apriltag_bench_rb1.yaml`. Check with
+`ros2 topic echo --once --full-length /perception/opponents`.
+Bench test 2026-11-23: status ok, tag at 0.725 m read `position_m [0.727, 0.001]`,
+yaw 0.086 rad, speed ~0, reprojection 0.89 px.

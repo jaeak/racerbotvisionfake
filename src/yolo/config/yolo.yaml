@@ -8,3 +8,5 @@ yolo_node:
     iou: 0.45                # overlap above this = same object (NMS)
     input_size: 640          # must match imgsz used when exporting (try 320 if too slow)
     publish_debug_image: true
+    classes: ['car']         # COCO class names to keep; ['all'] = everything
+    barrier_color: orange    # barrier colour filter: orange or yellow

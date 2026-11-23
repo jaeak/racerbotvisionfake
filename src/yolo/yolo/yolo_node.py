@@ -10,6 +10,7 @@ Support code only: it never publishes /drive, so it can't move the car.
 import json
 import time
 
+import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -18,7 +19,7 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
-from .detector import draw_detections, orange_mask, YoloDetector
+from .detector import color_mask, draw_detections, YoloDetector
 
 
 class YoloNode(Node):
@@ -32,6 +33,8 @@ class YoloNode(Node):
         self.declare_parameter('iou', 0.45)
         self.declare_parameter('input_size', 640)
         self.declare_parameter('publish_debug_image', True)
+        self.declare_parameter('classes', ['car'])        # ['all'] = every class
+        self.declare_parameter('barrier_color', 'orange')  # 'orange' or 'yellow'
 
         model_path = self.get_parameter('model_path').value
         if not model_path:
@@ -42,7 +45,10 @@ class YoloNode(Node):
             input_size=self.get_parameter('input_size').value,
             confidence=self.get_parameter('confidence').value,
             iou=self.get_parameter('iou').value,
+            classes=self.get_parameter('classes').value,
         )
+        self.barrier_color = self.get_parameter('barrier_color').value
+        color_mask(np.zeros((1, 1, 3), dtype=np.uint8), self.barrier_color)  # fail early if wrong
         self.publish_debug = self.get_parameter('publish_debug_image').value
         self.bridge = CvBridge()
 
@@ -59,7 +65,9 @@ class YoloNode(Node):
 
         self.frames = 0
         self.last_log = time.monotonic()
-        self.get_logger().info(f'YOLO node ready, listening on {image_topic}')
+        self.get_logger().info(
+            f'YOLO node ready, listening on {image_topic}, classes '
+            f'{list(self.get_parameter("classes").value)}, barrier colour {self.barrier_color}')
 
     def on_image(self, msg):
         try:
@@ -70,7 +78,7 @@ class YoloNode(Node):
 
         start = time.monotonic()
         detections = self.detector.detect(frame)
-        mask = orange_mask(frame)
+        mask = color_mask(frame, self.barrier_color)
         infer_ms = (time.monotonic() - start) * 1000
 
         # Keep the camera's timestamp + frame_id so other nodes can match
@@ -82,7 +90,8 @@ class YoloNode(Node):
             'frame_id': msg.header.frame_id,
             'image_size': [msg.width, msg.height],
             'inference_ms': round(infer_ms, 1),
-            'orange_pixels': int((mask > 0).sum()),
+            'barrier_color': self.barrier_color,
+            'barrier_pixels': int((mask > 0).sum()),
             'detections': detections,
         })
         self.detections_pub.publish(out)

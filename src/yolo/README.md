@@ -24,7 +24,8 @@ Example detections message:
 
 ```json
 {"stamp": {"sec": 1763520000, "nanosec": 0}, "frame_id": "camera",
- "image_size": [640, 480], "inference_ms": 85.2, "orange_pixels": 1520,
+ "image_size": [640, 480], "inference_ms": 85.2,
+ "barrier_color": "orange", "barrier_pixels": 1520,
  "detections": [{"class_id": 2, "class_name": "car", "confidence": 0.81,
                  "bbox_xyxy_pixels": [120.0, 200.0, 260.0, 300.0],
                  "center_xy_pixels": [190.0, 250.0]}]}
@@ -143,6 +144,22 @@ To see the boxes, on the car's screen (remote desktop) run
 | `iou` | `0.45` | Overlap threshold for removing duplicate boxes (NMS) |
 | `input_size` | `640` | Must match `imgsz` used when exporting |
 | `publish_debug_image` | `true` | Publish the image with boxes drawn |
+| `classes` | `['car']` | COCO class names to keep, e.g. `['car', 'truck']`. `['all']` keeps everything |
+| `barrier_color` | `orange` | Barrier colour filter: `orange` or `yellow` (one at a time) |
+
+To switch, e.g. to yellow barriers: change `barrier_color: yellow` in
+`config/yolo.yaml`, then `colcon build --packages-select yolo` and relaunch.
+The node prints its classes and barrier colour when it starts.
+
+**Colour ranges** (`COLOR_RANGES` in `yolo/detector.py`, OpenCV HSV):
+
+| Colour | Hue | Saturation | Value |
+|---|---|---|---|
+| orange | 5-18 | 150-255 | 100-255 |
+| yellow | 20-35 | 150-255 | 100-255 |
+
+Janet's original single range was hue 5-25, saturation 100+, which also caught
+skin. These are starting values: tune them with pictures of the real barriers.
 
 ## Tests
 
@@ -157,4 +174,7 @@ These test the detection logic with fake YOLO output, so they need no model or c
 - Uses the stock COCO model, so "car" means a real car, not necessarily a Racerbot car.
   A model trained on our own images comes later.
 - Boxes are in pixels only. A webcam can't measure distance on its own.
-- The orange mask is a rough colour filter, not a verified barrier detector.
+- The barrier colour filter is a rough colour filter, not a verified barrier detector.
+- YOLO's pretrained model has no "barrier" class, and its "car" class is real
+  cars, so it may miss Racerbot cars. Reliable car/barrier detection needs a
+  model trained on our own pictures.
