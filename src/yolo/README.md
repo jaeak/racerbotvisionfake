@@ -60,10 +60,13 @@ cd ~/racerbot-vision            # wherever the repo is cloned
 colcon build --packages-select yolo
 ```
 
-**3. Make sure nothing else is using the webcam.** Only one program can open it.
-Don't run the dashboard webcam stream unless it's set to `image_topic: /image_raw`.
+**3. Car 1 only: make sure nothing else is using the webcam.** Only one program
+can open it. Don't run the dashboard webcam stream unless it's set to
+`image_topic: /image_raw`. (Car 2's dashboard already reads the RealSense topic.)
 
-**4. Terminal 1, start the camera driver** (opens the webcam, publishes `/image_raw`):
+**4. Terminal 1, start the camera.**
+
+Car 1 (webcam), opens the webcam and publishes `/image_raw`:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -73,22 +76,42 @@ ros2 run usb_cam usb_cam_node_exe --ros-args -p video_device:=/dev/video0
 If it says `Package 'usb_cam' not found`: `sudo apt install ros-jazzy-usb-cam`
 (ask whoever manages the car first).
 
+Car 2 (RealSense), publishes `/camera/camera/color/image_raw`:
+
+```bash
+source /opt/ros/jazzy/setup.bash && source ~/racerbot-ws/install/setup.bash
+ros2 launch racerbot_launch realsense_camera_launch.py
+```
+
 **5. Terminal 2, start the YOLO node:**
 
 ```bash
 source /opt/ros/jazzy/setup.bash
+source ~/racerbot-ws/install/setup.bash        # so it can tell which car it's on
 source ~/racerbot-vision/install/setup.bash
 ros2 launch yolo yolo_launch.py model_path:=$HOME/models/yolov8n.onnx
 ```
 
-Working when it prints `YOLO node ready, listening on /image_raw`, then a line
+The camera topic is picked automatically from the car's profile
+(`racerbot_car`, `cars/<car>/car.yaml` in the car workspace), so this is the
+same command on both cars. The first line it prints says which one it chose:
+
+```
+YOLO camera topic: /image_raw (car rb1 has a webcam)
+YOLO camera topic: /camera/camera/color/image_raw (car rb2 has a RealSense)
+```
+
+If the car workspace isn't sourced, or it's a laptop, it falls back to
+`/image_raw`. To force a topic: add `image_topic:=/some/topic` to the command.
+
+Working when it prints `YOLO node ready, listening on <topic>`, then a line
 like `8.3 FPS, last inference 110 ms, 1 detections` every 5 seconds.
 
 **6. Terminal 3, check the output:**
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-ros2 topic hz /image_raw                      # camera running? (~15-30 Hz)
+ros2 topic hz /image_raw                      # camera running? (car 2: /camera/camera/color/image_raw)
 ros2 topic hz /perception/yolo/detections     # YOLO running?
 ros2 topic echo /perception/yolo/detections   # see the detections
 ```
@@ -108,13 +131,14 @@ To see the boxes, on the car's screen (remote desktop) run
 | No `FPS` lines appear | No images arriving: check step 4 and `ros2 topic hz /image_raw` |
 | Camera driver can't open `/dev/video0` | Something else has the webcam (usually the dashboard stream). Stop it. |
 | `ros2 launch yolo ...` says package not found | You didn't `source ~/racerbot-vision/install/setup.bash` |
+| Car 2 picks `/image_raw` | The car workspace isn't sourced in that terminal: `source ~/racerbot-ws/install/setup.bash` |
 
 ## Settings (`config/yolo.yaml`)
 
 | Parameter | Default | Meaning |
 |---|---|---|
 | `model_path` | `''` | Path to the `.onnx` file (required) |
-| `image_topic` | `/image_raw` | Where camera frames come from |
+| `image_topic` | picked by car | Set by `yolo_launch.py` from the car profile (car 1: `/image_raw`, car 2: `/camera/camera/color/image_raw`). Override with `image_topic:=...` |
 | `confidence` | `0.35` | Ignore boxes below this score |
 | `iou` | `0.45` | Overlap threshold for removing duplicate boxes (NMS) |
 | `input_size` | `640` | Must match `imgsz` used when exporting |
