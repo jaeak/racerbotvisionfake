@@ -1,0 +1,35 @@
+# Bench-test config for opponent_perception on car 1 (2026-11-23).
+# Copied from Racerbot-Car-Workspace/src/opponent_perception/config/opponent_perception.yaml
+#
+# Test setup: tag 2 stuck on a box (or held) in front of the parked car,
+# standing for "the other car". The tag centre is treated as the other car's
+# reference point (no real mount offset yet).
+#
+# opponent_from_tag: tag frame -> "other car" frame, for a tag on the BACK of
+# the other car facing us. It also includes the 180 degree fix for our printed
+# tags (official AprilTag images are rotated 180 deg vs OpenCV's tag36h11).
+# For a real car, replace the last column with the measured offset from its
+# rear axle to the tag centre (x forward, y left, z up, metres).
+schema_version: 1
+calibrated: true          # camera intrinsics + extrinsics checked 2026-11-23
+tracking_frame: odom
+max_error_px: 2.0
+max_range_m: 8.0
+tracking:
+  velocity_gain: 0.5
+  fresh_sec: 0.25
+  lost_sec: 0.75
+  max_speed_mps: 8.0
+  position_uncertainty_m: 0.05
+  uncertainty_growth_mps: 0.5
+  horizon_sec: 1.0
+  step_sec: 0.1
+tags:
+  - id: 2
+    vehicle_id: test_target
+    size_m: 0.167
+    opponent_from_tag:
+      - [0.0, 0.0, -1.0, 0.0]
+      - [1.0, 0.0, 0.0, 0.0]
+      - [0.0, -1.0, 0.0, 0.0]
+      - [0.0, 0.0, 0.0, 1.0]
